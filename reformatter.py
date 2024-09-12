@@ -4,22 +4,23 @@ import sys
 import time
 import requests
 from urllib.parse import unquote
-
+from pprint import pprint
 
 def set_cookie():
     url = 'https://online2pdf.com/multiple-pages-per-sheet'
     resp = requests.get(url)
-    keys = ['C', 'SESSID', 'SETTINGS_ID', 'U', 'disable_privacy_msg']
+    keys = ['C', 'SESSID', 'SETTINGS_ID', 'U', 'A']  # 240912
     return {key: resp.cookies.get(key) for key in keys}
 
 
 def check(cookie_init):
     url = 'https://online2pdf.com/check'
     params = {
-        'v': '2',
-        'ab': '11'
+        'v': '3',  # 240912
+        'ab': '11',
+        'ra': None,  # 240912
     }
-    cookies = {'language': 'en'}
+    cookies = {'language': 'en',}
     cookies.update(cookie_init)
     resp = requests.post(url, data=params, cookies=cookies)
     server_cred_raw = re.sub(r'(\w+):', r'"\1":', resp.text).replace("'", "\"")
@@ -33,16 +34,17 @@ def conversion_ajax(server_cred, cookie_init, settings, upload_pdf, export_name)
     payload.update({
         'cid': _encode_cid(server_cred['cid']),
         'sid': cookie_init['SESSID'],
-        'SETTINGS_ID': cookie_init['SETTINGS_ID']
+        'SETTINGS_ID': cookie_init['SETTINGS_ID'],
+        'v': 3  # 240912
     })
     url = 'https://{}.online2pdf.com/conversion/ajax'.format(server_cred['server'])
     cookies = cookie_init.copy()
-    cookies.pop('disable_privacy_msg')
     cookies['language'] = 'en'
     with open(upload_pdf, 'rb') as f:
         export_name = f.name if not export_name else export_name
         export_name = export_name.split('/')[-1] if '/' in export_name else export_name
-        files = {'userfile[0][]': (export_name, f, 'application/pdf')}
+        payload.update({'output_name': export_name.split('.')[0]})  # 240912
+        files = {'userfile[0][0]': (export_name, f, 'application/pdf')}  # 240912
         resp = requests.post(url=url, data=payload, cookies=cookies, files=files)
     resp_raw = re.sub(r'(\w+):', r'"\1":', resp.text).replace("'", "\"")
     return resp.cookies.get('SETTINGS_ID'), json.loads(resp_raw)['id']
@@ -62,10 +64,9 @@ def progress(cookie_init, ajax_id, server_cred):
     payload = {
         'sid': cookie_init['SESSID'],
         'uid': ajax_id,
-        'v': '2'
+        'v': 3
     }
     cookies = cookie_init.copy()
-    cookies.pop('disable_privacy_msg')
     cookies['language'] = 'en'
     resp = requests.post(url, data=payload, cookies=cookies)
     resp_raw = re.sub(r'(\w+):', r'"\1":', resp.text).replace("'", "\"")
@@ -91,11 +92,11 @@ if __name__ == '__main__':
 
     # for more configuration options, please refer to `request_body.json`.
     settings = {
-        'layout_border': '0',                           # PDF page layout: Without border
-        'layout_mode_multiple_pages_per_sheet': '3',    # PDF page layout: Pages per sheet
+        'layout_border': 0,                             # PDF page layout: Without border
+        'layout_mode_multiple_pages_per_sheet': 3,      # PDF page layout: Pages per sheet
         'layout_page_orientation': 'portrait',          # Page layout: Orientation of the PDF page
-        'layout_inner_margin': '0',                     # Inner margin: The space between the pages
-        'layout_outer_margin': '0'                      # Outer margin: The space between content and page margin
+        'layout_inner_margin': 0,                       # Inner margin: The space between the pages
+        'layout_outer_margin': 0                        # Outer margin: The space between content and page margin
     }
 
     if len(sys.argv) < 2:
@@ -121,10 +122,6 @@ if __name__ == '__main__':
             pdf_url = data['url']
             break
         print('Pdf export not ready.')
-        time.sleep(5)
+        time.sleep(2)
 
     download_pdf('https:'+data['url'])
-
-
-
-
