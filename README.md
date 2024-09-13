@@ -22,11 +22,11 @@ python reformatter.py filename [outputfilename]
 
 以下是已定义的参数及其解释：
 
-- `'layout_border': '0'`: PDF页面布局：无边框
-- `'layout_mode_multiple_pages_per_sheet': '3'`: PDF页面布局：每页显示的幻灯片数量
+- `'layout_border': 0`: PDF页面布局：无边框
+- `'layout_mode_multiple_pages_per_sheet': 3`: PDF页面布局：每页显示的幻灯片数量
 - `'layout_page_orientation': 'portrait'`: 页面布局：PDF页面的方向（纵向）
-- `'layout_inner_margin': '0'`: 内边距：页面之间的间距
-- `'layout_outer_margin': '0'`: 外边距：内容与页面边缘之间的间距
+- `'layout_inner_margin': 0`: 内边距：页面之间的间距
+- `'layout_outer_margin': 0`: 外边距：内容与页面边缘之间的间距
 
 效果预览：
 
