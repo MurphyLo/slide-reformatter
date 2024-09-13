@@ -5,7 +5,7 @@ import sys
 import time
 import requests
 from urllib.parse import unquote
-from pprint import pprint
+
 
 def set_cookie():
     url = 'https://online2pdf.com/multiple-pages-per-sheet'
@@ -74,11 +74,16 @@ def progress(cookie_init, ajax_id, server_cred):
     return json.loads(resp_raw)
 
 
-def download_pdf(url, path):
+def download_pdf(url, path, output_file=None):
     try:
-        response = requests.get(url)
-        if response.status_code == 200 and response.headers['Content-Type'] == 'application/x-download':
-            with open(path + unquote(url.split('/')[-1]), 'wb') as f:
+        response = requests.get(f'https:{url}')
+        response.raise_for_status()
+        
+        if response.headers['Content-Type'] == 'application/x-download':
+            filename = output_file if output_file else 'converted_' + unquote(url.split('/')[-1])
+            full_path = os.path.join(path, filename)
+            
+            with open(full_path, 'wb') as f:
                 f.write(response.content)
             print(f"PDF file has been successfully downloaded.")
         else:
@@ -125,5 +130,5 @@ if __name__ == '__main__':
         print('Pdf export not ready.')
         time.sleep(2)
 
-    path = '/' + '/'.join(sys.argv[1].split('/')[:-1]) + '/' if '/' in sys.argv[1] else './'
-    download_pdf('https:'+data['url'], path)
+    output_dir = os.path.dirname(sys.argv[1]) or '.'
+    download_pdf(pdf_url, output_dir, output_file)
