@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import sys
 import time
@@ -28,7 +29,7 @@ def check(cookie_init):
 
 
 def conversion_ajax(server_cred, cookie_init, settings, upload_pdf, export_name):
-    with open('request_body.json', 'r') as f:
+    with open(os.path.dirname(__file__) + '/request_body.json', 'r') as f:
         payload = json.load(f)
     payload.update(settings)
     payload.update({
@@ -73,11 +74,11 @@ def progress(cookie_init, ajax_id, server_cred):
     return json.loads(resp_raw)
 
 
-def download_pdf(url):
+def download_pdf(url, path):
     try:
         response = requests.get(url)
         if response.status_code == 200 and response.headers['Content-Type'] == 'application/x-download':
-            with open(unquote(url.split('/')[-1]), 'wb') as f:
+            with open(path + unquote(url.split('/')[-1]), 'wb') as f:
                 f.write(response.content)
             print(f"PDF file has been successfully downloaded.")
         else:
@@ -124,4 +125,5 @@ if __name__ == '__main__':
         print('Pdf export not ready.')
         time.sleep(2)
 
-    download_pdf('https:'+data['url'])
+    path = '/' + '/'.join(sys.argv[1].split('/')[:-1]) + '/' if '/' in sys.argv[1] else './'
+    download_pdf('https:'+data['url'], path)
