@@ -10,11 +10,25 @@
 
 调用方式如下：
 
+#### 1. 使用 Terminal 命令
+
 ```
 python reformatter.py filename [outputfilename]
 ```
 
 其中，`filename`为待处理的PDF文件名，`outputfilename`为可选参数，表示输出文件名。如果不提供`outputfilename`，则会使用默认的输出文件名。
+
+#### 2. 使用 macOS Automator 应用
+
+2.1 新建 `Quick Action` 类型项目
+
+2.2 从 `Actions` 列表中检索并添加 `Run Shell Script` 项目
+
+2.3 修改 `Workflow receives current` 为 `PDF Files`
+
+2.4 在已添加的 `Run Shell Script` 项目中添加命令 `/path/to/python /path/to/local/repo/reformatter.py "$@"`
+
+2.5 修改该项目的 `Pass input` 参数为 `as arguments`
 
 ## 格式化选项
 

@@ -5,8 +5,24 @@ import sys
 import time
 import requests
 from urllib.parse import unquote
+import logging
+from datetime import datetime
 
+# 设置日志
+log_file = os.path.expanduser('~/slide_reformatter.log')
+logging.basicConfig(filename=log_file, level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
+def log_time(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        logging.info(f"{func.__name__} 执行时间: {end_time - start_time:.2f} 秒")
+        return result
+    return wrapper
+
+@log_time
 def set_cookie():
     url = 'https://online2pdf.com/multiple-pages-per-sheet'
     resp = requests.get(url)
@@ -14,6 +30,7 @@ def set_cookie():
     return {key: resp.cookies.get(key) for key in keys}
 
 
+@log_time
 def check(cookie_init):
     url = 'https://online2pdf.com/check'
     params = {
@@ -28,6 +45,7 @@ def check(cookie_init):
     return json.loads(server_cred_raw)
 
 
+@log_time
 def conversion_ajax(server_cred, cookie_init, settings, upload_pdf, export_name):
     with open(os.path.dirname(__file__) + '/request_body.json', 'r') as f:
         payload = json.load(f)
@@ -60,6 +78,7 @@ def _encode_cid(cid):
     return cid2
 
 
+@log_time
 def progress(cookie_init, ajax_id, server_cred):
     url = 'https://{}.online2pdf.com/progress'.format(server_cred['server'])
     payload = {
@@ -74,17 +93,39 @@ def progress(cookie_init, ajax_id, server_cred):
     return json.loads(resp_raw)
 
 
+@log_time
 def download_pdf(url, path, output_file=None):
     try:
-        response = requests.get(f'https:{url}')
+        start_time = time.time()
+        logging.info(f"开始下载PDF: https:{url}")
+        
+        response = requests.get(f'https:{url}', stream=True)
         response.raise_for_status()
         
         if response.headers['Content-Type'] == 'application/x-download':
             filename = output_file if output_file else 'converted_' + unquote(url.split('/')[-1])
             full_path = os.path.join(path, filename)
             
+            total_size = int(response.headers.get('content-length', 0))
+            block_size = 8192
+            downloaded_size = 0
+            
             with open(full_path, 'wb') as f:
-                f.write(response.content)
+                for data in response.iter_content(block_size):
+                    size = f.write(data)
+                    downloaded_size += size
+                    
+                    if total_size > 0:
+                        percent = (downloaded_size / total_size) * 100
+                        elapsed_time = time.time() - start_time
+                        speed = downloaded_size / (1024 * elapsed_time)
+                        logging.info(f"下载进度: {percent:.2f}%, 速度: {speed:.2f} KB/s")
+            
+            end_time = time.time()
+            total_time = end_time - start_time
+            average_speed = (total_size / (1024 * 1024)) / total_time
+            
+            logging.info(f"PDF文件下载完成。总大小: {total_size/1024/1024:.2f} MB, 总时间: {total_time:.2f} 秒, 平均速度: {average_speed:.2f} MB/s")
             print(f"PDF file has been successfully downloaded.")
         else:
             print("The requested URL may not be a PDF file or is not accessible.")
@@ -95,6 +136,8 @@ def download_pdf(url, path, output_file=None):
 
 
 if __name__ == '__main__':
+    start_time = time.time()
+    logging.info("程序开始执行")
 
     # for more configuration options, please refer to `request_body.json`.
     settings = {
@@ -116,19 +159,25 @@ if __name__ == '__main__':
 
     cookie_init = set_cookie()
     server_cred = check(cookie_init)
-    print('Begin uploading PDF.')
+    logging.info('开始上传PDF')
     time.sleep(3)
     cookie_init['SETTINGS_ID'], ajax_id = conversion_ajax(server_cred, cookie_init, settings, input_file, output_file)
-    print('PDF uploaded. Processing.')
+    logging.info('PDF已上传，正在处理')
     time.sleep(2)
 
+    progress_start_time = time.time()
     while True:
         data = progress(cookie_init, ajax_id, server_cred)
         if data and data['action'] == 'message':  # 条件判断：使用短路策略
             pdf_url = data['url']
             break
-        print('Pdf export not ready.')
+        logging.info('PDF导出尚未就绪')
         time.sleep(2)
+    logging.info(f"等待PDF导出完成时间: {time.time() - progress_start_time:.2f} 秒")
 
     output_dir = os.path.dirname(sys.argv[1]) or '.'
     download_pdf(pdf_url, output_dir, output_file)
+
+    end_time = time.time()
+    logging.info(f"程序总执行时间: {end_time - start_time:.2f} 秒")
+    logging.info("程序执行完毕")
