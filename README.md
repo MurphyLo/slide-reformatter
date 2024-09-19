@@ -20,7 +20,7 @@ python reformatter.py filename [outputfilename]
 
 #### 2. 使用 macOS Finder 中的 PDF 文件右键菜单（基于 Automator 应用）
 
-2.1 新建 `Quick Action` 类型项目
+2.1 打开系统自带的 Automator 应用，新建 `Quick Action` 类型项目
 
 2.2 从 `Actions` 列表中检索并添加 `Run Shell Script` 项目
 
