@@ -18,9 +18,9 @@ python reformatter.py filename [outputfilename]
 
 其中，`filename`为待处理的PDF文件名，`outputfilename`为可选参数，表示输出文件名。如果不提供`outputfilename`，则会使用默认的输出文件名。
 
-#### 2. 使用 macOS Automator 应用
+#### 2. 使用 macOS Finder 中的 PDF 文件右键菜单（基于 Automator 应用）
 
-2.1 新建 `Quick Action` 类型项目
+2.1 打开系统自带的 Automator 应用，新建 `Quick Action` 类型项目
 
 2.2 从 `Actions` 列表中检索并添加 `Run Shell Script` 项目
 
@@ -29,6 +29,8 @@ python reformatter.py filename [outputfilename]
 2.4 在已添加的 `Run Shell Script` 项目中添加命令 `/path/to/python /path/to/local/repo/reformatter.py "$@"`
 
 2.5 修改该项目的 `Pass input` 参数为 `as arguments`
+
+2.6 保存项目并命名为 `PDF3合1`。在 Finder 中选择一个 PDF 文件打开右键文件菜单，选择 `Quick Actions` -> `PDF3合1` 即可开始转换，转换结果保存为同一目录下的 `converted_<original_pdf_filename>`
 
 ## 格式化选项
 
