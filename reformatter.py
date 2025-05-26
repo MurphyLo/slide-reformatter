@@ -6,12 +6,15 @@ import time
 import requests
 from urllib.parse import unquote
 import logging
+from bs4 import BeautifulSoup
 from datetime import datetime
 
 # 设置日志
 log_file = os.path.expanduser('~/slide_reformatter.log')
 logging.basicConfig(filename=log_file, level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
+
+proxies = {"https": "http://127.0.0.1:7897"}
 
 def log_time(func):
     def wrapper(*args, **kwargs):
@@ -25,7 +28,7 @@ def log_time(func):
 @log_time
 def set_cookie():
     url = 'https://online2pdf.com/multiple-pages-per-sheet'
-    resp = requests.get(url)
+    resp = requests.get(url, proxies=proxies)
     keys = ['C', 'SESSID', 'SETTINGS_ID', 'U', 'A']  # 240912
     return {key: resp.cookies.get(key) for key in keys}
 
@@ -40,7 +43,7 @@ def check(cookie_init):
     }
     cookies = {'language': 'en',}
     cookies.update(cookie_init)
-    resp = requests.post(url, data=params, cookies=cookies)
+    resp = requests.post(url, data=params, cookies=cookies, proxies=proxies)
     server_cred_raw = re.sub(r'(\w+):', r'"\1":', resp.text).replace("'", "\"")
     return json.loads(server_cred_raw)
 
@@ -60,11 +63,16 @@ def conversion_ajax(server_cred, cookie_init, settings, upload_pdf, export_name)
     cookies = cookie_init.copy()
     cookies['language'] = 'en'
     with open(upload_pdf, 'rb') as f:
-        export_name = f.name if not export_name else export_name
+
+        # export_name = f.name if not export_name else export_name
+        # export_name = export_name.split('/')[-1] if '/' in export_name else export_name
+        # 24.12.13 修改：进一步兼容 windows 平台，修复产生长文件名的问题 converted_C__Users_luozh_Documents_UniAD.pdf
+        export_name = os.path.basename(f.name) if not export_name else os.path.basename(export_name)
         export_name = export_name.split('/')[-1] if '/' in export_name else export_name
+
         payload.update({'output_name': export_name.split('.')[0]})  # 240912
         files = {'userfile[0][0]': (export_name, f, 'application/pdf')}  # 240912
-        resp = requests.post(url=url, data=payload, cookies=cookies, files=files)
+        resp = requests.post(url=url, data=payload, cookies=cookies, files=files, proxies=proxies)
     resp_raw = re.sub(r'(\w+):', r'"\1":', resp.text).replace("'", "\"")
     return resp.cookies.get('SETTINGS_ID'), json.loads(resp_raw)['id']
 
@@ -88,7 +96,7 @@ def progress(cookie_init, ajax_id, server_cred):
     }
     cookies = cookie_init.copy()
     cookies['language'] = 'en'
-    resp = requests.post(url, data=payload, cookies=cookies)
+    resp = requests.post(url, data=payload, cookies=cookies, proxies=proxies)
     resp_raw = re.sub(r'(\w+):', r'"\1":', resp.text).replace("'", "\"")
     return json.loads(resp_raw)
 
@@ -99,7 +107,7 @@ def download_pdf(url, path, output_file=None):
         start_time = time.time()
         logging.info(f"开始下载PDF: https:{url}")
         
-        response = requests.get(f'https:{url}', stream=True)
+        response = requests.get(f'https:{url}', stream=True, proxies=proxies)
         response.raise_for_status()
         
         if response.headers['Content-Type'] == 'application/x-download':
@@ -129,6 +137,8 @@ def download_pdf(url, path, output_file=None):
             print(f"PDF file has been successfully downloaded.")
         else:
             print("The requested URL may not be a PDF file or is not accessible.")
+            soup = BeautifulSoup(response.content, 'lxml')
+            print(soup.text)
     except requests.exceptions.RequestException as e:
         print(f"An error occurred during the request: {e}")
     except IOError as e:
@@ -143,6 +153,7 @@ if __name__ == '__main__':
     settings = {
         'layout_border': 0,                             # PDF page layout: Without border
         'layout_mode_multiple_pages_per_sheet': 3,      # PDF page layout: Pages per sheet
+        'layout_mode': 3,                               #             new: Pages per sheet MUST BE SAME AS `layout_mode_multiple_pages_per_sheet`
         'layout_page_orientation': 'portrait',          # Page layout: Orientation of the PDF page
         'layout_inner_margin': 0,                       # Inner margin: The space between the pages
         'layout_outer_margin': 0                        # Outer margin: The space between content and page margin
